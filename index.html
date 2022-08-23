@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+<title>SPA Gatsby Document Template</title>
+<script type=module>
+// legacy support
+let exports = null;
+const cache = {};
+let basepath = '';
+globalThis.process = {env:{}};
+globalThis.require = function require(path){
+	const url = new URL(`${ basepath }/${ path }`, location);
+	const { pathname } = url;
+	cache[pathname] = null;
+	const req = import(url).then(res=>{
+		const payload = exports;
+		cache[pathname] = payload;
+		// reset for next
+		exports = null;
+		return res;
+	})
+	.catch(res=>{
+		console.warn({path, url, pathname, res});
+		console.error(res);
+	})
+	;
+	return function resolve(){
+		return cache[pathname];
+	};
+}
+globalThis.module = new Proxy({exports}, {
+	set(target, key, val, pxy){
+		exports = val;
+		return true;
+	}
+});
+
+import { Lit, markdown } from './deps.js';
+const { LitElement, html, css, svg } = Lit;
+const md = new markdown.Remarkable();
+console.log(md.render(`# markdown *here*?`), {Lit,markdown});
+
+class UndoDocs extends LitElement{
+	static cache = cache;
+	static md = md;
+	docs = ['./docs1', './docs2'];
+	constructor(){
+		super();
+		this.activeDocs = this.docs[0];
+	}
+
+	load(config=`./gatsby-config.js`){
+		require(config);
+	}
+
+	connectedCallback(){
+		super.connectedCallback();
+		console.warn(`connected ${ this.localName }`, this);
+		basepath = this.activeDocs;
+		this.load();
+	}
+
+	disconnectedCallback(){
+		super.disconnectedCallback();
+	}
+
+	render(){
+		return html`Docs Viewer for "${ this.activeDocs }" <slot>...</slot>`;
+	}
+}
+
+customElements.define('undo-docs', UndoDocs);
+</script>
+</head>
+<style>
+
+</style>
+<body>
+<undo-docs>UndoDocs
+
+</undo-docs>
+</body>
+</html>
