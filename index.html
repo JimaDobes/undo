@@ -158,6 +158,7 @@ customElements.define('undo-docs', UndoDocs);
 class UndoView extends HTMLElement{
 	constructor(){
 		super();
+		this.docs = null;
 
 		this.attachShadow({mode:'open'}).innerHTML = `
 			<style>
@@ -169,7 +170,6 @@ class UndoView extends HTMLElement{
 			<slot>view</slot>
 			<textarea></textarea>
 		`;
-
 		this._load = this._load.bind(this);
 	}
 
@@ -181,11 +181,19 @@ class UndoView extends HTMLElement{
 		this.setAttribute('src', url);
 	}
 
+	resolve(path){
+		return new URL(`${ this.basepath }${ path }`, location);
+	}
+
 	_load({type, detail}){
 		const { src, docs, url } = detail;
 		if(src !== this.src) return;
-		console.warn(type, {src, docs, url});
 		this.docs = docs;
+		this.url = url;
+		const parts = url.pathname.split('/');
+		parts.pop();
+		this.basepath = parts.join('/');
+		console.warn(type, {src, docs, url});
 		this.render();
 	}
 
