@@ -13,10 +13,8 @@ globalThis.require = function require(path){
 	const url = new URL(`${ basepath }/${ path }`, location);
 	const { pathname } = url;
 	cache[pathname] = null;
-console.log(1,`require ${url}`);
 	const req = import(url)
 	.then(res=>{
-console.log(2,`then ${url}`);
 		const payload = exports;
 		cache[pathname] = payload;
 		// reset for next
@@ -37,6 +35,27 @@ console.log(2,`then ${url}`);
 	required.request = req;
 	required[Symbol.iterator] = iterator;
 	return required;
+}
+function unrequire(hash){
+	const type = typeof hash;
+	if(type !== 'object') return;
+	Object.entries(hash)
+	.forEach(([key,item], i, all)=>{
+		const type = typeof item;
+		if('function' === type){
+			const value = item();
+			if(item.spread){
+				// spread what came in from here
+				hash.splice(i, 1, ...value);
+			}else{
+				hash[key] = value;
+			}
+		}else{
+			unrequire(item);
+		}
+	})
+	;
+	return hash;
 }
 function iterator(){
 		let index = 0;
@@ -103,20 +122,15 @@ class UndoDocs extends HTMLElement{
 			config = parts.pop();
 			basepath = parts.join('/');
 		}
-console.warn(`load`, {basepath, config, url});
 		const req = require(config);
 		req.request
-			.then(res=>{
-				console.log('loaded',{basepath, url, res});
-			})
 			.finally(()=>{
 				this.busy = false;
-				// TODO process results, only provide content
-				console.warn(`done with TODO walk through and call the various response functions`, {src, pathname, basepath, url});
 				
 				const { cache } = UndoDocs;
-				const result = cache[ pathname ];
-				this.dispatchEvent(new CustomEvent('undo-loaded-docs', {detail: {result, cache, pathname, src, url}, bubbles: true, composed: true}));
+				const result = unrequire( cache[ pathname ] );
+				const detail = {docs: result, src, url};
+				this.dispatchEvent(new CustomEvent('undo-loaded-docs', {detail, bubbles: true, composed: true}));
 				const next = this.pending.shift();
 				if(next) this.load(next);
 			});
@@ -134,10 +148,7 @@ console.warn(`load`, {basepath, config, url});
 	}
 
 	_load({type, detail}){
-		console.warn(type, {detail});
-		if(detail){
-			this.load(detail);
-		}
+		this.load(detail);
 	}
 }
 
@@ -170,9 +181,9 @@ class UndoView extends HTMLElement{
 	}
 
 	_load({type, detail}){
-		const { src, } = detail;
+		const { src, docs, url } = detail;
 		if(src !== this.src) return;
-		console.warn(type, 'TODO now render it...', detail);
+		console.warn(type, {src, docs, url});
 	}
 
 	connectedCallback(){
