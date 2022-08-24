@@ -3,30 +3,53 @@
 <head>
 <title>SPA Gatsby Document Template</title>
 <script type=module>
-// legacy support
+// legacy support, hacking
 let exports = null;
 const cache = {};
 let basepath = '';
+const queue = new Set([]);
 globalThis.process = {env:{}};
 globalThis.require = function require(path){
 	const url = new URL(`${ basepath }/${ path }`, location);
 	const { pathname } = url;
 	cache[pathname] = null;
-	const req = import(url).then(res=>{
+console.log(1,`require ${url}`);
+	const req = import(url)
+	.then(res=>{
+console.log(2,`then ${url}`);
 		const payload = exports;
 		cache[pathname] = payload;
 		// reset for next
 		exports = null;
-		return res;
+		queue.delete(req);
+		return Promise.all(queue);
 	})
 	.catch(res=>{
-		console.warn({path, url, pathname, res});
+		console.warn({basepath, path, url, pathname, res});
 		console.error(res);
+		queue.delete(req);
 	})
 	;
-	return function resolve(){
+	queue.add(req);
+	function required(){
 		return cache[pathname];
 	};
+	required.request = req;
+	required[Symbol.iterator] = iterator;
+	return required;
+}
+function iterator(){
+		let index = 0;
+		// update later in place
+		this.spread = true;
+		const value = this;
+	return {
+		next() {
+			if(index > 0) return { done: true };
+			index++;
+			return { value, done: false }
+		}
+	}
 }
 globalThis.module = new Proxy({exports}, {
 	set(target, key, val, pxy){
@@ -40,36 +63,140 @@ const { LitElement, html, css, svg } = Lit;
 const md = new markdown.Remarkable();
 console.log(md.render(`# markdown *here*?`), {Lit,markdown});
 
-class UndoDocs extends LitElement{
+/* generally manage loading content and tracking shared concerns
+ */
+class UndoDocs extends HTMLElement{
 	static cache = cache;
-	static md = md;
-	docs = ['./docs1', './docs2'];
+	static queue = queue;
+	static __md = md;
+	static markdown = md.render;
+	pending = [];
+	busy = false;
 	constructor(){
 		super();
-		this.activeDocs = this.docs[0];
-	}
+		this.attachShadow({mode:'open'}).innerHTML = `
+			<style>
+			:host(:hover){background-color:var(--golden, #ddd);position:relative;}
+			:slotted{font-weight:normal;}
+			slot[name="source"]{color:var(--blue, #555);}
+			slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
+			</style>
+			<slot></slot>
+		`;
 
-	load(config=`./gatsby-config.js`){
-		require(config);
+		this.addEventListener('undo-load-docs', this._load);
+	}
+	// this hasn't been tried with multiple projects
+	load(src=`./gatsby-config.js`){
+		let config = src;
+		if(this.busy){
+			this.pending.push(config);
+			return;
+		}
+		this.busy = true;
+		const url = new URL(config, location);
+		const { pathname } = url;
+		// generally gatsby-config is assumed to be in the root of each
+		// set the basepath for respective things loading
+		const parts = pathname.split('/');
+		if(parts.length > 2){
+			config = parts.pop();
+			basepath = parts.join('/');
+		}
+console.warn(`load`, {basepath, config, url});
+		const req = require(config);
+		req.request
+			.then(res=>{
+				console.log('loaded',{basepath, url, res});
+			})
+			.finally(()=>{
+				this.busy = false;
+				// TODO process results, only provide content
+				console.warn(`done with TODO walk through and call the various response functions`, {src, pathname, basepath, url});
+				
+				const { cache } = UndoDocs;
+				const result = cache[ pathname ];
+				this.dispatchEvent(new CustomEvent('undo-loaded-docs', {detail: {result, cache, pathname, src, url}, bubbles: true, composed: true}));
+				const next = this.pending.shift();
+				if(next) this.load(next);
+			});
 	}
 
 	connectedCallback(){
-		super.connectedCallback();
-		console.warn(`connected ${ this.localName }`, this);
-		basepath = this.activeDocs;
-		this.load();
+		const nodes = this.ownerDocument.querySelectorAll(this.localName);
+		if(nodes.length > 1){
+			throw new Error(`there should only be one ${this.localName} element per document to prevent conflicts when loading content`);
+		}
 	}
 
-	disconnectedCallback(){
-		super.disconnectedCallback();
+	markdown(content){
+		return UndoDocs.markdown(content);
 	}
 
-	render(){
-		return html`Docs Viewer for "${ this.activeDocs }" <slot>...</slot>`;
+	_load({type, detail}){
+		console.warn(type, {detail});
+		if(detail){
+			this.load(detail);
+		}
 	}
 }
 
 customElements.define('undo-docs', UndoDocs);
+
+
+class UndoView extends HTMLElement{
+	constructor(){
+		super();
+
+		this.attachShadow({mode:'open'}).innerHTML = `
+			<style>
+			:host(:hover){background-color:var(--golden, #ddd);position:relative;}
+			:slotted{font-weight:normal;}
+			slot[name="source"]{color:var(--blue, #555);}
+			slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
+			</style>
+			<slot>view</slot>
+		`;
+
+		this._load = this._load.bind(this);
+	}
+
+	get src(){
+		return this.getAttribute('src') ?? '';
+	}
+
+	set src(url=''){
+		this.setAttribute('src', url);
+	}
+
+	_load({type, detail}){
+		const { src, } = detail;
+		if(src !== this.src) return;
+		console.warn(type, 'TODO now render it...', detail);
+	}
+
+	connectedCallback(){
+		self.addEventListener('undo-loaded-docs', this._load);
+	}
+
+	disconnectedCallback(){
+		self.removeEventListener('undo-loaded-docs', this._load);
+	}
+
+	static get observedAttributes() { return ['src']; }
+
+	attributeChangedCallback(name, old, value=''){
+		if('src' === name){
+			this.dispatchEvent(new CustomEvent('undo-load-docs', {detail:value, bubbles:true, composed: true}));
+		};
+	}
+
+	render(){
+		Array.from(this.children).forEach(node=>node.remove());
+	}
+}
+
+customElements.define('undo-view', UndoView);
 </script>
 </head>
 <style>
@@ -77,7 +204,8 @@ customElements.define('undo-docs', UndoDocs);
 </style>
 <body>
 <undo-docs>UndoDocs
-
+	<undo-view src="./docs1/gatsby-config.js">docs1</undo-view>
+	<undo-view src="./docs2/gatsby-config.js">docs2</undo-view>
 </undo-docs>
 </body>
 </html>
