@@ -6,7 +6,7 @@
 // legacy support, hacking
 let exports = null;
 const cache = {};
-let basepath = '';
+globalThis.basepath = '';
 const queue = new Set([]);
 globalThis.process = {env:{}};
 globalThis.require = function require(path){
@@ -118,10 +118,10 @@ class UndoDocs extends HTMLElement{
 		// generally gatsby-config is assumed to be in the root of each
 		// set the basepath for respective things loading
 		const parts = pathname.split('/');
-		if(parts.length > 2){
-			config = parts.pop();
-			basepath = parts.join('/');
-		}
+		// remote the file part
+		config = parts.pop();
+		const basepath = parts.join('/');
+		globalThis.basepath = basepath;
 		const req = require(config);
 		req.request
 			.finally(()=>{
@@ -129,7 +129,7 @@ class UndoDocs extends HTMLElement{
 				
 				const { cache } = UndoDocs;
 				const result = unrequire( cache[ pathname ] );
-				const detail = {docs: result, src, url};
+				const detail = {docs: result, src, url, basepath};
 				this.dispatchEvent(new CustomEvent('undo-loaded-docs', {detail, bubbles: true, composed: true}));
 				const next = this.pending.shift();
 				if(next) this.load(next);
@@ -159,6 +159,7 @@ class UndoView extends HTMLElement{
 	constructor(){
 		super();
 		this.docs = null;
+		this.basepath = '';
 
 		this.attachShadow({mode:'open'}).innerHTML = `
 			<style>
@@ -186,14 +187,12 @@ class UndoView extends HTMLElement{
 	}
 
 	_load({type, detail}){
-		const { src, docs, url } = detail;
+		const { src, docs, url, basepath } = detail;
 		if(src !== this.src) return;
 		this.docs = docs;
 		this.url = url;
-		const parts = url.pathname.split('/');
-		parts.pop();
-		this.basepath = parts.join('/');
-		console.warn(type, {src, docs, url});
+		this.basepath = basepath;
+		console.warn(type, {src, docs, url, basepath});
 		this.render();
 	}
 
