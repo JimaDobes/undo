@@ -16,12 +16,11 @@ undo/
 * show the desired docs in the UI 
 	add to the html (static or dynamically) tags with attirbutes for the source and theme:
 	for example the above html would have all the docs in the view with a theme like:
-...
-<undo-docs>
-	<undo-view src="./docs1/gatsby-config.js" theme="./theme.js"></undo-view>
-	<undo-view src="./docs2/gatsby-config.js" theme="./theme.js"></undo-view>
-	<undo-view src="./docs3/gatsby-config.js" theme="./theme.js"></undo-view>
-</undo-docs>
+
+	<html><body>
+	<undo-docs src="./docs1/gatsby-config.js" theme="./theme.js"></undo-docs>
+	<undo-docs src="./docs2/gatsby-config.js" theme="./theme.js"></undo-docs>
+	<undo-docs src="./docs3/gatsby-config.js" theme="./theme.js"></undo-docs>
 
 note it's possible to:
 * have several instances of the same docs with different themes (to compare)
@@ -29,10 +28,8 @@ note it's possible to:
 * combine different docs for composition in various ways
 
 TODO
-* change src loading from event to fetch-style promise callback
 * resolve theme system
-* separate out components
-* setup tests
 * develop basic default theme to work from
+* tests
 * add more themes if/as-indicated
 
