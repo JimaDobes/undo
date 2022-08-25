@@ -82,80 +82,13 @@ const { LitElement, html, css, svg } = Lit;
 const md = new markdown.Remarkable();
 console.log(md.render(`# markdown *here*?`), {Lit,markdown});
 
-/* generally manage loading content and tracking shared concerns
- */
 class UndoDocs extends HTMLElement{
 	static cache = cache;
 	static queue = queue;
 	static __md = md;
 	static markdown = md.render;
-	pending = [];
-	busy = false;
-	constructor(){
-		super();
-		this.attachShadow({mode:'open'}).innerHTML = `
-			<style>
-			:host(:hover){background-color:var(--golden, #ddd);position:relative;}
-			:slotted{font-weight:normal;}
-			slot[name="source"]{color:var(--blue, #555);}
-			slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
-			</style>
-			<slot></slot>
-		`;
-
-		this.addEventListener('undo-load-docs', this._load);
-	}
-	// this hasn't been tried with multiple projects
-	load(src=`./gatsby-config.js`){
-		let config = src;
-		if(this.busy){
-			this.pending.push(config);
-			return;
-		}
-		this.busy = true;
-		const url = new URL(config, location);
-		const { pathname } = url;
-		// generally gatsby-config is assumed to be in the root of each
-		// set the basepath for respective things loading
-		const parts = pathname.split('/');
-		// remote the file part
-		config = parts.pop();
-		const basepath = parts.join('/');
-		globalThis.basepath = basepath;
-		const req = require(config);
-		return req.request
-			.finally(()=>{
-				this.busy = false;
-				
-				const { cache } = UndoDocs;
-				const result = unrequire( cache[ pathname ] );
-				const detail = {docs: result, src, url, basepath};
-				this.dispatchEvent(new CustomEvent('undo-loaded-docs', {detail, bubbles: true, composed: true}));
-				const next = this.pending.shift();
-				if(next) this.load(next);
-			});
-	}
-
-	connectedCallback(){
-		const nodes = this.ownerDocument.querySelectorAll(this.localName);
-		if(nodes.length > 1){
-			throw new Error(`there should only be one ${this.localName} element per document to prevent conflicts when loading content`);
-		}
-	}
-
-	markdown(content){
-		return UndoDocs.markdown(content);
-	}
-
-	_load({type, detail}){
-		this.load(detail);
-	}
-}
-
-customElements.define('undo-docs', UndoDocs);
-
-
-class UndoView extends HTMLElement{
+	static pending = [];
+	static busy = false;
 	constructor(){
 		super();
 		this.docs = null;
@@ -189,6 +122,11 @@ class UndoView extends HTMLElement{
 		url ? this.setAttribute('theme', url) : this.removeAttribute('theme');
 	}
 
+	markdown(content){
+		return UndoDocs.markdown(content);
+	}
+
+
 	resolve(path){
 		return new URL(`${ this.basepath }${ path }`, location);
 	}
@@ -205,6 +143,7 @@ class UndoView extends HTMLElement{
 
 	connectedCallback(){
 		self.addEventListener('undo-loaded-docs', this._loaded);
+//		if(!this.docs && this.src) this.load();
 	}
 
 	disconnectedCallback(){
@@ -233,7 +172,7 @@ class UndoView extends HTMLElement{
 	attributeChangedCallback(name, old, value=''){
 		switch(name){
 		case 'src':
-			this.dispatchEvent(new CustomEvent('undo-load-docs', {detail:value, bubbles:true, composed: true}));
+			if(value) this.load();
 		break;
 		case 'theme':
 			this.loadTheme();
@@ -249,18 +188,65 @@ class UndoView extends HTMLElement{
 			this.shadowRoot.querySelector('textarea').innerHTML = JSON.stringify(docs);
 		});
 	}
+
+	load(){
+		this.setAttribute('loading','');
+		return UndoDocs.load(this.src)
+		.finally(()=>{
+			this.removeAttribute('loading');
+		})
+		;
+	}
+
+	static load(src=`./gatsby-config.js`){
+		let config = src;
+		if(this.busy){
+			let resume;
+			const later = ()=>{ return this.load(src); };
+			const promise = new Promise(function(resolve, reject){
+				resume = function(){
+					return resolve(later());
+				}
+			});
+			this.pending.push(resume);
+			return promise;
+		}
+		this.busy = true;
+		const url = new URL(config, location);
+		const { pathname } = url;
+		// generally gatsby-config is assumed to be in the root of each
+		// set the basepath for respective things loading
+		const parts = pathname.split('/');
+		// remote the file part
+		config = parts.pop();
+		const basepath = parts.join('/');
+		globalThis.basepath = basepath;
+		const req = require(config);
+		return req.request
+			.finally(()=>{
+				this.busy = false;
+				
+				const { cache } = this;
+				const result = unrequire( cache[ pathname ] );
+				const detail = {docs: result, src, url, basepath};
+				self.dispatchEvent(new CustomEvent('undo-loaded-docs', {detail, bubbles: true, composed: true}));
+				const next = this.pending.shift();
+				if(next){
+					next()
+				}
+			});
+	}
 }
 
-customElements.define('undo-view', UndoView);
+customElements.define('undo-docs', UndoDocs);
 </script>
 </head>
 <style>
 
 </style>
 <body>
-<undo-docs>UndoDocs
-	<undo-view src="./docs1/gatsby-config.js" theme="./theme.js">docs1</undo-view>
-	<undo-view src="./docs2/gatsby-config.js" theme="./theme.js">docs2</undo-view>
-</undo-docs>
+UndoDocs
+	<undo-docs src="./docs1/gatsby-config.js" theme="./theme.js">docs1</undo-docs>
+	<undo-docs src="./docs2/gatsby-config.js" theme="./theme.js">docs2</undo-docs>
 </body>
 </html>
