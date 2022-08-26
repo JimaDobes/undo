@@ -101,8 +101,8 @@ class UndoDocs extends HTMLElement{
 			slot[name="source"]{color:var(--blue, #555);}
 			slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
 			</style>
-			<slot>view</slot>
 			<textarea></textarea>
+			<slot>view</slot>
 		`;
 		this._loaded = this._loaded.bind(this);
 	}
@@ -188,12 +188,23 @@ class UndoDocs extends HTMLElement{
 		}
 	}
 
+	renderPage(html){
+		cancelAnimationFrame(this._renderPage);
+		this._renderPage = requestAnimationFrame(()=>{
+			this.innerHTML = html;
+		});
+	}
+
 	render(){
 		cancelAnimationFrame(this._render);
 		this._render = requestAnimationFrame(()=>{
 			Array.from(this.children).forEach(node=>node.remove());
 			const { docs = null } = this;
 			this.shadowRoot.querySelector('textarea').innerHTML = JSON.stringify(docs);
+			if( !docs ) return;
+			this.fetchm(docs.siteMetadata.pages[0].path).then(res=>{ 
+				this.renderPage(res.html); 
+			});
 		});
 	}
 
