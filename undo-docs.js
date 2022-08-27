@@ -1,0 +1,283 @@
+// legacy support, hacking
+let exports = null;
+const cache = {};
+globalThis.basepath = '';
+const queue = new Set([]);
+globalThis.process = {env:{}};
+globalThis.require = function require(path){
+	const url = new URL(`${ basepath }/${ path }`, location);
+	const { pathname } = url;
+	cache[pathname] = null;
+	const req = import(url)
+	.then(res=>{
+		const payload = exports;
+		cache[pathname] = payload;
+		// reset for next
+		exports = null;
+		queue.delete(req);
+		return Promise.all(queue);
+	})
+	.catch(res=>{
+		console.warn({basepath, path, url, pathname, res});
+		console.error(res);
+		queue.delete(req);
+	})
+	;
+	queue.add(req);
+	function required(){
+		return cache[pathname];
+	};
+	required.request = req;
+	required[Symbol.iterator] = iterator;
+	return required;
+}
+function unrequire(hash){
+	const type = typeof hash;
+	if(type !== 'object') return;
+	Object.entries(hash)
+	.forEach(([key,item], i, all)=>{
+		const type = typeof item;
+		if('function' === type){
+			const value = item();
+			if(item.spread){
+				// spread what came in from here
+				hash.splice(i, 1, ...value);
+			}else{
+				hash[key] = value;
+			}
+		}else{
+			unrequire(item);
+		}
+	})
+	;
+	return hash;
+}
+function iterator(){
+		let index = 0;
+		// update later in place
+		this.spread = true;
+		const value = this;
+	return {
+		next() {
+			if(index > 0) return { done: true };
+			index++;
+			return { value, done: false }
+		}
+	}
+}
+globalThis.module = new Proxy({exports}, {
+	set(target, key, val, pxy){
+		exports = val;
+		return true;
+	}
+});
+
+import { Lit, markdown } from './deps.js';
+const { LitElement, html, css, svg } = Lit;
+const md = new markdown.Remarkable({html:true});
+// NOTE in remarkable.js export { Remarkable, utils, html_blocks };
+// <template> used for generally exempting content from markdown escaping+mangling
+markdown.html_blocks.template = true;
+console.log(md.render(`# markdown *here*?`), {Lit,markdown});
+
+class UndoDocs extends HTMLElement{
+	static cache = cache;
+	static queue = queue;
+	static __md = md;
+	static markdown = md.render.bind(md);
+	static pending = [];
+	static busy = false;
+	constructor(){
+		super();
+		this.docs = null;
+		this.basepath = '';
+		this._viewSelector = '';
+
+		this.attachShadow({mode:'open'}).innerHTML = `
+			<style>
+			:host(:hover){background-color:var(--golden, #ddd);position:relative;}
+			:slotted{font-weight:normal;}
+			slot[name="source"]{color:var(--blue, #555);}
+			slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
+			</style>
+			<textarea hidden></textarea>
+			<slot>view</slot>
+		`;
+		this._loaded = this._loaded.bind(this);
+
+		this.addEventListener('page', this._page);
+	}
+
+	_page({type, detail, target}){
+		console.warn(type, {detail, target});
+		this.setAttribute('loading-page', '');
+		this.fetchm(detail)
+		.then(response=>{
+			target.request = response;
+		})
+		.finally(()=>{
+			this.removeAttribute('loading-page');
+		})
+		;
+	}
+
+	get src(){
+		return this.getAttribute('src') ?? '';
+	}
+
+	set src(url=''){
+		this.setAttribute('src', url);
+	}
+	get view(){
+		return this.getAttribute('view') ?? '';
+	}
+
+	set view(url=''){
+		url ? this.setAttribute('view', url) : this.removeAttribute('view');
+	}
+
+	markdown(content){
+		return UndoDocs.markdown(content);
+	}
+
+
+	resolve(path){
+		return new URL(`${ this.basepath }${ path }`, location);
+	}
+
+	_loaded({type, detail}){
+		const { src, docs, url, path} = detail;
+		if(src !== this.src) return;
+		this.docs = docs;
+		this.url = url;
+		this.path = path;
+		this.basepath = path.basepath;
+		this.shadowRoot.querySelector('textarea').value = JSON.stringify(docs, false, '\t');
+		console.warn(type, {src, docs, url, path});
+		const view = this.querySelector(this._viewSelector || 'none');
+		if(view) view.docs = docs;
+	}
+
+	connectedCallback(){
+		self.addEventListener('undo-loaded-docs', this._loaded);
+	}
+
+	disconnectedCallback(){
+		self.removeEventListener('undo-loaded-docs', this._loaded);
+	}
+
+	// assumed: path/to/tag-name.js or module exports localName as tag-name
+	// otherwise export localName and that can be used instead
+	_viewing(src=this.view, oldview=''){
+		if(!src) return Promise.resolve(this._view);
+		const path = UndoDocs.path(src);
+		const tag = path.file.replace(`.${path.ext}`, '')
+		this.setAttribute('loading-view', '');
+		return import(src)
+		.then(res=>{
+			const { localName = tag } = res;
+			this._viewSelector = localName;
+			const node = this.ownerDocument.createElement(localName);
+			this.querySelectorAll(oldview || localName).forEach(node=>node.remove());
+			node.docs = this.docs;
+			if(!node.markdown){
+				node.markdown = this.markdown;
+			}
+			this.appendChild( node );
+		})
+		.catch(res=>{
+			console.warn(res);
+			debugger;
+			return null;
+		})
+		.finally(()=>{
+			this.removeAttribute('loading-view');
+		});
+		;
+	}
+
+	static get observedAttributes() { return ['src', 'view']; }
+
+	attributeChangedCallback(name, old, value=''){
+		switch(name){
+		case 'src':
+			if(value) this.load();
+		break;
+		case 'view':
+			this._viewing(value, old);
+		break;
+		}
+	}
+
+	load(){
+		this.setAttribute('loading','');
+		return UndoDocs.load(this.src)
+		.finally(()=>{
+			this.removeAttribute('loading');
+		})
+		;
+	}
+
+	fetchm(page='/'){
+		let pathname = `${this.basepath}/src/pages${ page }`;
+		if(pathname.endsWith('/')) pathname += 'index.md';
+		const path = UndoDocs.path(pathname);
+		return fetch(pathname)
+		.then(res=>res.text())
+		.then(text=>{ return {text,path,page} })
+	}
+
+	static path(pathname=''){
+		if(pathname.pathname){
+			// for URL, Location instances
+			pathname = pathname.pathname;
+		}
+		const trailingSlash = pathname.endsWith('/');
+		const pre = pathname.split('/');
+		const file = pre.pop();
+		const fparts = file.split('.');
+		const ext = fparts.length > 1 ? fparts.pop() : '';
+		const filename = fparts.join('.')
+		const [empty, ...dirs] = pre;
+		const basepath = pre.join('/');
+		return {pathname, basepath, pre, dirs, file, ext, filename};
+	}
+
+	static load(src=`./gatsby-config.js`){
+		let config = src;
+		if(this.busy){
+			let resume;
+			const later = ()=>{ return this.load(src); };
+			const promise = new Promise(function(resolve, reject){
+				resume = function(){
+					return resolve(later());
+				}
+			});
+			this.pending.push(resume);
+			return promise;
+		}
+		this.busy = true;
+		const url = new URL(config, location);
+		const path = this.path(url);
+		// generally gatsby-config is assumed to be in the root of each
+		// set the basepath for respective things loading
+		// remote the file part
+		config = path.file;
+		globalThis.basepath = path.basepath;
+		const req = require(config);
+		return req.request
+			.finally(()=>{
+				this.busy = false;
+				const { cache } = this;
+				const result = unrequire( cache[ url.pathname ] );
+				const detail = {docs: result, src, url, path};
+				self.dispatchEvent(new CustomEvent('undo-loaded-docs', {detail, bubbles: true, composed: true}));
+				const next = this.pending.shift();
+				if(next){
+					next()
+				}
+			});
+	}
+}
+
+customElements.define('undo-docs', UndoDocs);

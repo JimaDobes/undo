@@ -13,5 +13,7 @@ export * as Lit from './lib/lit.js';
  * https://github.com/jonschlinkert/remarkable
  * https://unpkg.com/remarkable@2.0.1/dist/esm/index.browser.js
  ? https://unpkg.com/browse/remarkable@2.0.1/dist/esm/linkify.js
+ * NOTE in remarkable.js export { Remarkable, utils, html_blocks };
+ * <template> used for generally exempting content from markdown escaping+mangling
  */
 export * as markdown from './lib/remarkable.js';
