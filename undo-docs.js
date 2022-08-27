@@ -89,7 +89,7 @@ class UndoDocs extends HTMLElement{
 	static busy = false;
 	constructor(){
 		super();
-		this.docs = null;
+		this._docs = null;
 		this.basepath = '';
 		this._viewSelector = '';
 
@@ -136,8 +136,8 @@ class UndoDocs extends HTMLElement{
 		url ? this.setAttribute('view', url) : this.removeAttribute('view');
 	}
 
-	markdown(content){
-		return UndoDocs.markdown(content);
+	get markdown(){
+		return UndoDocs.markdown;
 	}
 
 
@@ -145,17 +145,29 @@ class UndoDocs extends HTMLElement{
 		return new URL(`${ this.basepath }${ path }`, location);
 	}
 
+	get docs(){
+		return this._docs ?? null;
+	}
+
+	set docs(docs=null){
+		this._docs = docs;
+		cancelAnimationFrame(this._update_docs);
+		this._update_docs = requestAnimationFrame(()=>{
+			const view = this.querySelector(this._viewSelector || 'none');
+			if(view) view.docs = docs;
+			this.shadowRoot.querySelector('textarea').value = JSON.stringify(docs, false, '\t');
+		});
+	}
+
 	_loaded({type, detail}){
 		const { src, docs, url, path} = detail;
 		if(src !== this.src) return;
-		this.docs = docs;
 		this.url = url;
 		this.path = path;
 		this.basepath = path.basepath;
-		this.shadowRoot.querySelector('textarea').value = JSON.stringify(docs, false, '\t');
+		// NOTE docs setter requires the above already be available TODO improve this
+		this.docs = docs;
 		console.warn(type, {src, docs, url, path});
-		const view = this.querySelector(this._viewSelector || 'none');
-		if(view) view.docs = docs;
 	}
 
 	connectedCallback(){
@@ -177,13 +189,10 @@ class UndoDocs extends HTMLElement{
 		.then(res=>{
 			const { localName = tag } = res;
 			this._viewSelector = localName;
-			const node = this.ownerDocument.createElement(localName);
+			const view = this.ownerDocument.createElement(localName);
 			this.querySelectorAll(oldview || localName).forEach(node=>node.remove());
-			node.docs = this.docs;
-			if(!node.markdown){
-				node.markdown = this.markdown;
-			}
-			this.appendChild( node );
+			view.docs = this.docs;
+			this.appendChild( view );
 		})
 		.catch(res=>{
 			console.warn(res);
@@ -224,7 +233,9 @@ class UndoDocs extends HTMLElement{
 		const path = UndoDocs.path(pathname);
 		return fetch(pathname)
 		.then(res=>res.text())
-		.then(text=>{ return {text,path,page} })
+		.then(text=>{
+			return {text,path,page,markdown:this.markdown}
+		})
 	}
 
 	static path(pathname=''){

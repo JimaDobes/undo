@@ -44,11 +44,11 @@ class UndoView extends HTMLElement{
 	}
 	process(response=this.response){
 
-		const {text, path, page} = response;
+		const {text, path, page, markdown} = response;
 		let html, error, processed;
 		try{
-			processed = this.markdown( this.absurdPatterns(text, path) );
-			html = this.markdown(processed);
+			processed = markdown( this.absurdPatterns(text, path) );
+			html = markdown(processed);
 console.log(text,{html, processed, text}, processed);
 console.warn(html);
 		}catch(err){
