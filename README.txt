@@ -1,7 +1,7 @@
 
 undo/
  |-index.html
- |-theme.js
+ |-docs-view.js
  |
  |-docs1/
  |  |-gatsby-config.js
@@ -14,22 +14,23 @@ undo/
 * symlink or git clone doc repos where 'gatsby-config.js' is in the target directory
 	as shown above by docs1 (and docs2, docs3)
 * show the desired docs in the UI 
-	add to the html (static or dynamically) tags with attirbutes for the source and theme:
-	for example the above html would have all the docs in the view with a theme like:
+	add to the html (static or dynamically) tags with attributes for the source and view:
+	for example the above html would have all the docs in the view with a view component like:
 
 	<html><body>
-	<undo-docs src="./docs1/gatsby-config.js" theme="./theme.js"></undo-docs>
-	<undo-docs src="./docs2/gatsby-config.js" theme="./theme.js"></undo-docs>
-	<undo-docs src="./docs3/gatsby-config.js" theme="./theme.js"></undo-docs>
+	<undo-docs src="./docs1/gatsby-config.js" view="./docs-view.js"></undo-docs>
+	<undo-docs src="./docs2/gatsby-config.js" view="./docs-view.js"></undo-docs>
+	<undo-docs src="./docs3/gatsby-config.js" view="./docs-view.js"></undo-docs>
 
 note it's possible to:
-* have several instances of the same docs with different themes (to compare)
+* have several instances of the same docs with different views (to compare)
 * have different version of the docs to compare
 * combine different docs for composition in various ways
 
 TODO
-* resolve theme system
-* develop basic default theme to work from
+* resolve view system
+* resolve routing
+* develop basic default view to work from
 * tests
-* add more themes if/as-indicated
+* add more views if/as-indicated
 
