@@ -42,13 +42,20 @@ class UndoView extends HTMLElement{
 		this.response = response;
 		this.process(response);
 	}
+	render(html=this.localName){
+		cancelAnimationFrame(this._render);
+		this._render = requestAnimationFrame(()=>{
+			this.innerHTML = html;
+		});
+	}
 	process(response=this.response){
 
 		const {text, path, page, markdown} = response;
 		let html, error, processed;
 		try{
-			processed = markdown( this.absurdPatterns(text, path) );
+			processed = this.preprocess(text, path)
 			html = markdown(processed);
+			html = this.postprocess(html, path);
 console.log(text,{html, processed, text}, processed);
 console.warn(html);
 		}catch(err){
@@ -59,24 +66,19 @@ console.warn(html);
 		
 		this.render(html);
 	}
-	render(html=this.localName){
-		cancelAnimationFrame(this._render);
-		this._render = requestAnimationFrame(()=>{
-			this.innerHTML = html;
-		});
-	}
+
 /*
 special content is wrapped in a template tag, with the intended tag following both the opening and closing tags
 this allows post-processing (anytime, here or in the document later) to replace the open and closing tags
 remarkable.js I added 'template' to the html_blocks (in the following array mapped onto it)
 this allows capturing and substituting again back to the desired content without the content inside it or its attributes being handled
  */
-	absurdPatterns(text, path){
+	preprocess(text, path){
 		const { basepath } = path;
 console.log(path, text);
 		return text
 			.replace(/^\s*---\s*([\s\S]+?)---/m, function(all,p1,i,str){
-				return `<template tag=undo-meta>
+				return `<template tag=undo-meta hidden>
 ${ p1 }
 </template tag=undo-meta>`;
 			})
@@ -94,7 +96,9 @@ ${ p1 }
 			;
 	}
 
-
+	postprocess(text, path){
+		return text;
+	}
 }
 
 customElements.define('undo-view', UndoView);
