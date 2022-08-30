@@ -86,12 +86,6 @@ $1
 			.replace(/<([A-Za-z0-9-]+)([^>]*?)\/>/g, '<template tag=undo-$1$2></template tag=undo-$1$2>')
 			// fix image paths relative to this document
 			.replace(/(\]\()\./g, `$1${ basepath }`)
-// p1.trim().split(/\b(?=[a-z]+:[\s\S]+)/).map(str=>{ return str.replace(/^([a-z]+):/, ''); })
-// tired Array.from(p1.trim().matchAll(/\b([a-z]+):([\s\S]+)/g))
-// /^\s*---\s*([\s\S]+?)---/m, function(all,p1,i,str){ console.log({all, p1, i, str}); return p1; })
-//		<meta name="keywords" content="Creative Cloud, API Documentation, UXP, Plugins, JavaScript, ExtendScript, SDK, C++, Scripting" data-react-helmet="true">
-	//		.replace(//)
-	//		.replace()
 			;
 	}
 
@@ -111,4 +105,8 @@ $1
 	}
 }
 
-customElements.define('undo-view', UndoView);
+// optionally export localName and docs will create that tag instead of the script name
+const localName = 'undo-view';
+customElements.define(localName, UndoView);
+// exported class if there's ever interest in extending/using anything from it
+export {UndoView, localName}
