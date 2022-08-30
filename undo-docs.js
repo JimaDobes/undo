@@ -192,6 +192,7 @@ class UndoDocs extends HTMLElement{
 			const view = this.ownerDocument.createElement(localName);
 			this.querySelectorAll(oldview || localName).forEach(node=>node.remove());
 			view.docs = this.docs;
+			view.addEventListener('click', this._clickIntercept);
 			this.appendChild( view );
 		})
 		.catch(res=>{
@@ -203,6 +204,26 @@ class UndoDocs extends HTMLElement{
 			this.removeAttribute('loading-view');
 		});
 		;
+	}
+
+	_clickIntercept(event){
+		const { defaultPrevented, button, metaKey, ctrlKey, shiftKey, target } = event;
+		if (defaultPrevented || button !== 0 ||
+			metaKey || ctrlKey || shiftKey) return;
+
+		const anchor = target.closest('a');
+		if(!anchor || anchor.target || anchor.hasAttribute('download') || anchor.getAttribute('rel') === 'external' || anchor.origin !== location.origin) return;
+
+		const { href } = anchor;
+
+		if (!href || !href.startsWith('http')){
+			return;
+		}
+
+		event.preventDefault();
+		if(href !== location.href){
+			console.log(`TODO page, history.pushState(history.state || {}, ${ document.title }, ${ href })`);
+		}
 	}
 
 	static get observedAttributes() { return ['src', 'view']; }
