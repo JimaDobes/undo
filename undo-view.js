@@ -76,12 +76,11 @@ this allows capturing and substituting again back to the desired content without
 	preprocess(text, path){
 		const { basepath } = path;
 console.log(path, text);
-		return text
-			.replace(/^\s*---\s*([\s\S]+?)---/m, function(all,p1,i,str){
-				return `<template tag=undo-meta hidden>
-${ p1 }
-</template tag=undo-meta>`;
-			})
+		// (all,p1,i,str)
+		return text 
+			.replace(/^\s*---\s*([\s\S]+?)---/m, `<template tag=undo-meta hidden>
+$1
+</template tag=undo-meta>`)
 			// import statements are like server-side includes and just inject content in places from a source
 			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, '<template tag=undo-import target="undo-$1" src="$2"></template tag=undo-import>')
 			.replace(/<([A-Za-z0-9-]+)([^>]*?)\/>/g, '<template tag=undo-$1$2></template tag=undo-$1$2>')
@@ -97,7 +96,18 @@ ${ p1 }
 	}
 
 	postprocess(text, path){
-		return text;
+		//return text;
+		return text
+			.replace(/template tag=/mg, '')
+			;
+	}
+	
+	get undefined(){
+		return this.querySelectorAll(':not(:defined)');
+	}
+
+	get undefinedTags(){
+		return new Set(Array.from(this.undefined).map(node=>node.localName));
 	}
 }
 
