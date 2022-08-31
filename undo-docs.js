@@ -174,7 +174,11 @@ class UndoDocs extends HTMLElement{
 
 	_popstate(event){
 		const {state, type } = event;
-		const { page = '' } = state;
+		const { page = '', basepath = '' } = state;
+		if(basepath !== this.basepath){
+			console.log(`basepath mismatch, history traversal for different element`, {basepath, 'this.basepath':this.basepath, state});
+			return;
+		}
 		console.warn(`TODO when !page`,type, state, {event});
 		this.querySelector(this._viewSelector).page = state.page ?? '';
 	}
@@ -243,8 +247,9 @@ class UndoDocs extends HTMLElement{
 		if(!title){
 			title = `${path} ${this.title}`;
 		}
+		const { basepath } = this;
 		const { state } = history;
-		history[ state?.page === path ? 'replaceState':'pushState']({page: path}, title, path);
+		history[ state?.page === path ? 'replaceState':'pushState']({page: path, basepath}, title, path);
 	}
 
 	static get observedAttributes() { return ['src', 'view']; }
