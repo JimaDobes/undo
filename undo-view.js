@@ -10,7 +10,6 @@ docs parent will
 class UndoView extends HTMLElement{
 	constructor(){
 		super();
-		this.response = {text:'', path: ''};
 		this._docs = null
 	}
 	connectedCallback(){
@@ -35,22 +34,15 @@ class UndoView extends HTMLElement{
 	set page(page=''){
 		this.setAttribute('page', page);
 	}
-	get request(){
-		return this.response;
-	}
-	set request(response){
-		this.response = response;
-		this.process(response);
-	}
 	render(html=this.localName){
 		cancelAnimationFrame(this._render);
 		this._render = requestAnimationFrame(()=>{
 			this.innerHTML = html;
 		});
 	}
-	process(response=this.response){
+	process(response={}){
 
-		const {text, path, page, markdown} = response;
+		const {text='', path, page, markdown} = response;
 		let html, error, processed;
 		try{
 			processed = this.preprocess(text, path)
@@ -62,7 +54,7 @@ console.warn(html);
 				error = err;
 				console.error(err);
 		};
-		console.log({text, html, processed, error});
+		console.log(`view-process>`,{text, html, processed, error});
 		
 		this.render(html);
 	}
@@ -85,7 +77,7 @@ $1
 			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, '<template tag=undo-import target="undo-$1" src="$2"></template tag=undo-import>')
 			.replace(/<([A-Za-z0-9-]+)([^>]*?)\/>/g, '<template tag=undo-$1$2></template tag=undo-$1$2>')
 			// fix image paths relative to this document
-			.replace(/(\]\()\./g, `$1${ basepath }`)
+			.replace(/(!\[.*\]\()\./g, `$1${ basepath }`)
 			;
 	}
 

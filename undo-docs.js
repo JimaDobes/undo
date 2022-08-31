@@ -104,16 +104,18 @@ class UndoDocs extends HTMLElement{
 			<slot>view</slot>
 		`;
 		this._loaded = this._loaded.bind(this);
+		this._popstate = this._popstate.bind(this);
 
 		this.addEventListener('page', this._page);
 	}
 
 	_page({type, detail, target}){
 		console.warn(type, {detail, target});
+		this.location(detail, '');
 		this.setAttribute('loading-page', '');
 		this.fetchm(detail)
 		.then(response=>{
-			target.request = response;
+			target.process( response );
 		})
 		.finally(()=>{
 			this.removeAttribute('loading-page');
@@ -154,7 +156,7 @@ class UndoDocs extends HTMLElement{
 		cancelAnimationFrame(this._update_docs);
 		this._update_docs = requestAnimationFrame(()=>{
 			const view = this.querySelector(this._viewSelector || 'none');
-			if(view) view.docs = docs;
+			view.docs = docs;
 			this.shadowRoot.querySelector('textarea').value = JSON.stringify(docs, false, '\t');
 		});
 	}
@@ -170,12 +172,22 @@ class UndoDocs extends HTMLElement{
 		console.warn(type, {src, docs, url, path});
 	}
 
+	_popstate(event){
+		const {state, type } = event;
+		const { page = '' } = state;
+		console.warn(`TODO when !page`,type, state, {event});
+		this.querySelector(this._viewSelector).page = state.page ?? '';
+	}
+
 	connectedCallback(){
+		if(!this.title) this.title = this.ownerDocument.title;
 		self.addEventListener('undo-loaded-docs', this._loaded);
+		self.addEventListener('popstate', this._popstate);
 	}
 
 	disconnectedCallback(){
 		self.removeEventListener('undo-loaded-docs', this._loaded);
+		self.removeEventListener('popstate', this._popstate);
 	}
 
 	// assumed: path/to/tag-name.js or module exports localName as tag-name
@@ -223,7 +235,16 @@ class UndoDocs extends HTMLElement{
 		event.preventDefault();
 		if(href !== location.href){
 			console.log(`TODO page, history.pushState(history.state || {}, ${ document.title }, ${ href })`);
+			this.page = anchor.pathname;
 		}
+	}
+
+	location(path='', title){
+		if(!title){
+			title = `${path} ${this.title}`;
+		}
+		const { state } = history;
+		history[ state?.page === path ? 'replaceState':'pushState']({page: path}, title, path);
 	}
 
 	static get observedAttributes() { return ['src', 'view']; }
@@ -250,10 +271,24 @@ class UndoDocs extends HTMLElement{
 
 	fetchm(page='/'){
 		let pathname = `${this.basepath}/src/pages${ page }`;
-		if(pathname.endsWith('/')) pathname += 'index.md';
+		let alternate;
+		if(pathname.endsWith('/')){
+			alternate = pathname.replace(/\/$/, '.md');
+			pathname += 'index.md';
+		console.warn(`TODO when trailing slash, ... try BOTH index.md and replace '/' with .md`);
+		}
 		const path = UndoDocs.path(pathname);
 		return fetch(pathname)
-		.then(res=>res.text())
+		.then(res=>{
+			if(!res.ok){
+				if(alternate){
+					return fetch(alternate).then(res=>res.text());
+				}else{
+					console.warn(res.status, res.url, res);
+				}
+			}
+			return res.text();
+		})
 		.then(text=>{
 			return {text,path,page,markdown:this.markdown}
 		})
