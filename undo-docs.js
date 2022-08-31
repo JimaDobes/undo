@@ -107,6 +107,7 @@ class UndoDocs extends HTMLElement{
 		this._popstate = this._popstate.bind(this);
 
 		this.addEventListener('page', this._page);
+		this.addEventListener('click', this._clickIntercept);
 	}
 
 	_page({type, detail, target}){
@@ -115,7 +116,7 @@ class UndoDocs extends HTMLElement{
 		this.setAttribute('loading-page', '');
 		this.fetchm(detail)
 		.then(response=>{
-			target.process( response );
+			this.querySelector(this._viewSelector).content( response );
 		})
 		.finally(()=>{
 			this.removeAttribute('loading-page');
@@ -147,6 +148,13 @@ class UndoDocs extends HTMLElement{
 		return new URL(`${ this.basepath }${ path }`, location);
 	}
 
+	get page(){
+		return this.getAttribute('page') ?? '';
+	}
+	set page(page=''){
+		this.setAttribute('page', page);
+	}
+
 	get docs(){
 		return this._docs ?? null;
 	}
@@ -155,8 +163,9 @@ class UndoDocs extends HTMLElement{
 		this._docs = docs;
 		cancelAnimationFrame(this._update_docs);
 		this._update_docs = requestAnimationFrame(()=>{
-			const view = this.querySelector(this._viewSelector || 'none');
+			const view = this.querySelector(this._viewSelector || 'un-known');
 			view.docs = docs;
+			this.page = this.docs?.siteMetadata?.pages[0].path ?? '';
 			this.shadowRoot.querySelector('textarea').value = JSON.stringify(docs, false, '\t');
 		});
 	}
@@ -180,7 +189,7 @@ class UndoDocs extends HTMLElement{
 			return;
 		}
 		console.warn(`TODO when !page`,type, state, {event});
-		this.querySelector(this._viewSelector).page = state.page ?? '';
+		this.page = state.page ?? '';
 	}
 
 	connectedCallback(){
@@ -208,7 +217,6 @@ class UndoDocs extends HTMLElement{
 			const view = this.ownerDocument.createElement(localName);
 			this.querySelectorAll(oldview || localName).forEach(node=>node.remove());
 			view.docs = this.docs;
-			view.addEventListener('click', this._clickIntercept);
 			this.appendChild( view );
 		})
 		.catch(res=>{
@@ -252,7 +260,7 @@ class UndoDocs extends HTMLElement{
 		history[ state?.page === path ? 'replaceState':'pushState']({page: path, basepath}, title, path);
 	}
 
-	static get observedAttributes() { return ['src', 'view']; }
+	static get observedAttributes() { return ['src', 'view', 'page']; }
 
 	attributeChangedCallback(name, old, value=''){
 		switch(name){
@@ -262,6 +270,10 @@ class UndoDocs extends HTMLElement{
 		case 'view':
 			this._viewing(value, old);
 		break;
+		case 'page':
+			if(value){
+				this.dispatchEvent(new CustomEvent('page',{detail: value, composed:true, bubbles:true}));
+			}
 		}
 	}
 

@@ -1,38 +1,15 @@
 /*
-this component handles content for a given page, how content is transformed, renders that into itself to view the info and all related components, including loading and registering those respective components
+this component handles content for a given page, how content is transformed, renders that into itself to view the info and all related components, including loading and registering those respective components from this one; parent handles routing, loading, etc unrelated to rendering the view with those respective components;
 
-docs parent will 
-- pass this element page info from external routing and loading
-- handle requests from page changes, relative the original document source
-- pass text (TODO TBD objects/functions also needed?) for transforming content and updating itself with it html
-
+docs parent will call the content method with response text for the given page
+this view can process as desired, example follows
  */
 class UndoView extends HTMLElement{
 	constructor(){
 		super();
-		this._docs = null
 	}
 	connectedCallback(){
 		this.render();
-	}
-	static get observedAttributes() { return ['page']; }
-	attributeChangedCallback(name, old, value=''){
-		if(value && 'page' === name){
-			this.dispatchEvent(new CustomEvent('page',{detail: value, composed:true, bubbles:true}));
-		}
-	}
-	get docs(){
-		return this._docs;
-	}
-	set docs(docs=null){
-		this._docs = docs;
-		this.page = this.docs?.siteMetadata?.pages[0].path ?? '';
-	}
-	get page(){
-		return this.getAttribute('page') ?? '';
-	}
-	set page(page=''){
-		this.setAttribute('page', page);
 	}
 	render(html=this.localName){
 		cancelAnimationFrame(this._render);
@@ -40,7 +17,7 @@ class UndoView extends HTMLElement{
 			this.innerHTML = html;
 		});
 	}
-	process(response={}){
+	content(response={}){
 
 		const {text='', path, page, markdown} = response;
 		let html, error, processed;
