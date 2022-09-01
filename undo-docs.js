@@ -124,6 +124,10 @@ class UndoDocs extends HTMLElement{
 		;
 	}
 
+	get pathPrefix(){
+		return this.docs?.pathPrefix ?? '';
+	}
+
 	get src(){
 		return this.getAttribute('src') ?? '';
 	}
@@ -152,6 +156,9 @@ class UndoDocs extends HTMLElement{
 		return this.getAttribute('page') ?? '';
 	}
 	set page(page=''){
+		if(page && !page.startsWith('/')){
+			page = '/' + page;
+		}
 		this.setAttribute('page', page);
 	}
 
@@ -164,8 +171,8 @@ class UndoDocs extends HTMLElement{
 		cancelAnimationFrame(this._update_docs);
 		this._update_docs = requestAnimationFrame(()=>{
 			const view = this.querySelector(this._viewSelector || 'un-known');
-			view.docs = docs;
 			this.page = this.docs?.siteMetadata?.pages[0].path ?? '';
+			this.setAttribute('path-prefix', this.pathPrefix.replace(/\/$/,''));
 			this.shadowRoot.querySelector('textarea').value = JSON.stringify(docs, false, '\t');
 		});
 	}
@@ -183,9 +190,9 @@ class UndoDocs extends HTMLElement{
 
 	_popstate(event){
 		const {state, type } = event;
-		const { page = '', basepath = '' } = state;
+		const { page = this.page, basepath = this.basePath, pathPrefix = this.pathPrefix } = state ?? {};
 		if(basepath !== this.basepath){
-			console.log(`basepath mismatch, history traversal for different element`, {basepath, 'this.basepath':this.basepath, state});
+			console.log(`basepath mismatch, history traversal for different element`, {basepath, 'this.basepath':this.basepath, pathPrefix, state});
 			return;
 		}
 		console.warn(`TODO when !page`,type, state, {event});
@@ -221,7 +228,6 @@ class UndoDocs extends HTMLElement{
 		})
 		.catch(res=>{
 			console.warn(res);
-			debugger;
 			return null;
 		})
 		.finally(()=>{
@@ -238,16 +244,18 @@ class UndoDocs extends HTMLElement{
 		const anchor = target.closest('a');
 		if(!anchor || anchor.target || anchor.hasAttribute('download') || anchor.getAttribute('rel') === 'external' || anchor.origin !== location.origin) return;
 
-		const { href } = anchor;
+		let { protocol, href, pathname } = anchor;
 
-		if (!href || !href.startsWith('http')){
+		if (!href || !protocol.startsWith('http')){
 			return;
 		}
 
 		event.preventDefault();
-		if(href !== location.href){
+		pathname = pathname.replace(/(?:^\/src\/pages|index.md$)/g, '');
+		if(pathname !== location.pathname){// && pathname !== location.hash.substring(1)){
 			console.log(`TODO page, history.pushState(history.state || {}, ${ document.title }, ${ href })`);
-			this.page = anchor.pathname;
+
+			this.page = pathname.replace(this.pathPrefix, '');
 		}
 	}
 
@@ -255,9 +263,12 @@ class UndoDocs extends HTMLElement{
 		if(!title){
 			title = `${path} ${this.title}`;
 		}
-		const { basepath } = this;
+		const { basepath, pathPrefix } = this;
 		const { state } = history;
-		history[ state?.page === path ? 'replaceState':'pushState']({page: path, basepath}, title, path);
+		const url = new URL(`${ pathPrefix }${ path }`, location);
+		const pathname = url.pathname.replace(/\/{2,}/g, '/');
+		const page = !path.startsWith('/') ?  pathname.replace(pathPrefix,'/') : path;
+		history[ state?.page === path ? 'replaceState':'pushState']({page, basepath, pathPrefix }, title, `${ pathname }`);
 	}
 
 	static get observedAttributes() { return ['src', 'view', 'page']; }
