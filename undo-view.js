@@ -46,16 +46,28 @@ special content is wrapped in a template tag, with the intended tag following bo
 this allows post-processing (anytime, here or in the document later) to replace the open and closing tags
 remarkable.js I added 'template' to the html_blocks (in the following array mapped onto it)
 this allows capturing and substituting again back to the desired content without the content inside it or its attributes being handled
+
+` <template tag=undo-import target="undo-Content" src="uxp-documentation/src/pages/uxp/reference-js/index.md"></template tag=undo-import>;
+<template tag=undo-Content query="product=photoshop"></template tag=undo-Content query="product=photoshop">`
  */
 	preprocess(text, path){
 		const { basepath } = path;
+		const unimport = {};
+
 		return text 
 			.replace(/^\s*---\s*([\s\S]+?)---/m, `<template tag=undo-meta hidden>
 $1
 </template tag=undo-meta>`)
 			// import statements are like server-side includes and just inject content in places from a source
-			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, '<template tag=undo-import target="undo-$1" src="$2"></template tag=undo-import>')
-			.replace(/<([A-Za-z0-9-]+)([^>]*?)\/>/g, '<template tag=undo-$1$2></template tag=undo-$1$2>')
+//			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, '<template tag=undo-import target="undo-$1" src="$2"></template tag=undo-import>')
+			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, function _unimport(all, $1, $2, i, str){
+				unimport[ $1 ] = $2;
+				return '';
+			})
+			.replace(/<([A-Za-z0-9-]+)([^>]*?)\/>/g, function _importToSrc(all, $1, $2, str){
+				const src = unimport[ $1 ];
+				return `<template tag=undo-${ $1 }${ $2 }${ src ? ` src=${ src }`:'' }></template tag=undo-${ $1 }${ $2 }>`;
+			})
 			// fix image paths relative to this document
 			.replace(/(!\[.*?\]\()[\.\/]*/g, `$1${ basepath }/`)
 			;
@@ -76,7 +88,7 @@ $1
 		return this.$(':not(:defined)');
 	}
 
-	get undefinedTags(selector){
+	get undefinedTags(){
 		return new Set(this.undefined.map(node=>node.localName));
 	}
 }

@@ -119,7 +119,11 @@ class UndoDocs extends HTMLElement{
 		this.setAttribute('loading-page', '');
 		this.fetchm(page)
 		.then(response=>{
-			this.querySelector(this._viewSelector).content( response );
+			const { _viewSelector } = this;
+			if(_viewSelector){
+				this.querySelector(this._viewSelector).content( response );
+			}
+			return response;
 		})
 		.finally(()=>{
 			this.removeAttribute('loading-page');
