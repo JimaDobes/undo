@@ -244,18 +244,20 @@ class UndoDocs extends HTMLElement{
 		const anchor = target.closest('a');
 		if(!anchor || anchor.target || anchor.hasAttribute('download') || anchor.getAttribute('rel') === 'external' || anchor.origin !== location.origin) return;
 
-		let { protocol, href, pathname } = anchor;
+		// if exists will be modified
+		const url = new URL(anchor);
+		let { protocol, href, pathname } = url;
 
 		if (!href || !protocol.startsWith('http')){
 			return;
 		}
 
 		event.preventDefault();
-		pathname = pathname.replace(/(?:^\/src\/pages|index.md$)/g, '');
-		if(pathname !== location.pathname){// && pathname !== location.hash.substring(1)){
+		url.pathname = pathname.replace(/(?:^\/src\/pages|index.md$)/g, '');
+		if(url.pathname !== location.pathname){// && pathname !== location.hash.substring(1)){
 			console.log(`TODO page, history.pushState(history.state || {}, ${ document.title }, ${ href })`);
 
-			this.page = pathname.replace(this.pathPrefix, '');
+			this.page = url.pathname.replace(this.pathPrefix, '');
 		}
 	}
 
