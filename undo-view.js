@@ -59,7 +59,6 @@ this allows capturing and substituting again back to the desired content without
 $1
 </template tag=undo-meta>`)
 			// import statements are like server-side includes and just inject content in places from a source
-//			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, '<template tag=undo-import target="undo-$1" src="$2"></template tag=undo-import>')
 			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, function _unimport(all, $1, $2, i, str){
 				unimport[ $1 ] = $2;
 				return '';
