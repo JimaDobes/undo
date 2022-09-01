@@ -111,10 +111,13 @@ class UndoDocs extends HTMLElement{
 	}
 
 	_page({type, detail, target}){
-		console.warn(type, {detail, target});
-		this.location(detail, '');
+		this.update(detail);
+	}
+
+	update(page){
+		this.location(page, '');
 		this.setAttribute('loading-page', '');
-		this.fetchm(detail)
+		this.fetchm(page)
 		.then(response=>{
 			this.querySelector(this._viewSelector).content( response );
 		})
@@ -307,11 +310,12 @@ class UndoDocs extends HTMLElement{
 			pathname += 'index.md';
 		console.warn(`TODO when trailing slash, ... try BOTH index.md and replace '/' with .md`);
 		}
-		const path = UndoDocs.path(pathname);
+		let path = UndoDocs.path(pathname);
 		return fetch(pathname)
 		.then(res=>{
 			if(!res.ok){
 				if(alternate){
+					path = UndoDocs.path(alternate);
 					return fetch(alternate).then(res=>res.text());
 				}else{
 					console.warn(res.status, res.url, res);

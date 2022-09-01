@@ -7,6 +7,7 @@ this view can process as desired, example follows
 class UndoView extends HTMLElement{
 	constructor(){
 		super();
+this.list = [];
 	}
 	connectedCallback(){
 		this.render();
@@ -25,13 +26,17 @@ class UndoView extends HTMLElement{
 			processed = this.preprocess(text, path)
 			html = markdown(processed);
 			html = this.postprocess(html, path);
-console.log(text,{html, processed, text}, processed);
-console.warn(html);
+//console.log(text,{html, processed, text}, processed);
+
+const res = {path, page, html, processed, text};
+this.path = path;
+this.page = page;
+this.res = res;
+console.log(this.list.push(res), res);
 		}catch(err){
 				error = err;
 				console.error(err);
 		};
-		console.log(`view-process>`,{text, html, processed, error});
 		
 		this.render(html);
 	}
@@ -44,8 +49,6 @@ this allows capturing and substituting again back to the desired content without
  */
 	preprocess(text, path){
 		const { basepath } = path;
-console.log(path, text);
-		// (all,p1,i,str)
 		return text 
 			.replace(/^\s*---\s*([\s\S]+?)---/m, `<template tag=undo-meta hidden>
 $1
@@ -54,7 +57,7 @@ $1
 			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, '<template tag=undo-import target="undo-$1" src="$2"></template tag=undo-import>')
 			.replace(/<([A-Za-z0-9-]+)([^>]*?)\/>/g, '<template tag=undo-$1$2></template tag=undo-$1$2>')
 			// fix image paths relative to this document
-			.replace(/(!\[.*\]\()\./g, `$1${ basepath }`)
+			.replace(/(!\[.*?\]\()[\.\/]*/g, `$1${ basepath }/`)
 			;
 	}
 
@@ -64,13 +67,17 @@ $1
 			.replace(/template tag=/mg, '')
 			;
 	}
+
+	$(selector){
+		return Array.from(this.querySelectorAll(selector));
+	}
 	
 	get undefined(){
-		return this.querySelectorAll(':not(:defined)');
+		return this.$(':not(:defined)');
 	}
 
-	get undefinedTags(){
-		return new Set(Array.from(this.undefined).map(node=>node.localName));
+	get undefinedTags(selector){
+		return new Set(this.undefined.map(node=>node.localName));
 	}
 }
 
