@@ -94,14 +94,16 @@ class UndoDocs extends HTMLElement{
 		this._viewSelector = '';
 
 		this.attachShadow({mode:'open'}).innerHTML = `
-			<style>
-			:host(:hover){background-color:var(--golden, #ddd);position:relative;}
-			:slotted{font-weight:normal;}
-			slot[name="source"]{color:var(--blue, #555);}
-			slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
-			</style>
-			<textarea hidden></textarea>
-			<slot>view</slot>
+<style>
+:host{
+	display: content;
+}
+:slotted{font-weight:normal;}
+slot[name="source"]{color:var(--blue, #555);}
+slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
+</style>
+<textarea hidden></textarea>
+<slot>...</slot>
 		`;
 		this._loaded = this._loaded.bind(this);
 		this._popstate = this._popstate.bind(this);
@@ -230,7 +232,6 @@ class UndoDocs extends HTMLElement{
 			this._viewSelector = localName;
 			const view = this.ownerDocument.createElement(localName);
 			this.querySelectorAll(oldview || localName).forEach(node=>node.remove());
-			view.docs = this.docs;
 			this.appendChild( view );
 		})
 		.catch(res=>{
@@ -328,7 +329,8 @@ class UndoDocs extends HTMLElement{
 			return res.text();
 		})
 		.then(text=>{
-			return {text,path,page,markdown:this.markdown}
+			const {docs} = this;
+			return {text,path,page,markdown:this.markdown, docs}
 		})
 	}
 

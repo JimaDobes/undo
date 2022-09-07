@@ -2,16 +2,29 @@
 <html lang=en>
 <head>
 <title>SPA Gatsby Document Template</title>
-<script type=module src="./undo-docs.js"></script>
+<script type=module src="/undo-docs.js"></script>
 </head>
 <style>
-
+:root{
+	--adb-red: rgb(250, 15, 0);
+}
+html, body{
+	margin:0; padding:0;
+	background-color: var(--adb-red);
+}
+body{
+	background-color: #fff;
+	color: #000;
+	display:flex;
+}
+undo-view{
+	width: 50vw;
+}
 </style>
 <body>
-UndoDocs
-	<undo-docs src="./docs1/gatsby-config.js" view="./undo-view.js">docs1</undo-docs>
+	<undo-docs src="/docs1/gatsby-config.js" view="/undo-view.js"></undo-docs>
 <!--
-	<undo-docs src="./docs2/gatsby-config.js" view="./undo-view.js">docs2</undo-docs>
+	<undo-docs src="./docs2/gatsby-config.js" view="./undo-view.js"></undo-docs>
 -->
 </body>
 </html>

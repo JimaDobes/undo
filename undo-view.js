@@ -7,20 +7,132 @@ this view can process as desired, example follows
 class UndoView extends HTMLElement{
 	constructor(){
 		super();
+		this._docs = null;
 this.list = [];
+		this.attachShadow({mode:'open'}).innerHTML = `
+<style>
+:host{
+	display:block;
+	margin:0;
+	padding:0;
+	width: 100vw;
+	height: 100vh;
+	overflow: auto;
+}
+svg[icon]{height:var(--icon-size, 1em);width:var(--icon-size, 1em);display:inline-block;}
+header{
+	display: flex;
+	position: sticky;
+	top: 0;
+	border-bottom: thin solid var(--c-neutral, #aaa);
+	background-color: var(--c-bg, #fff);
+	color: var(--c-fg, #333);
+}
+header svg{
+	--icon-size: var(--sz-logo, 20px);
+}
+footer svg{
+	--icon-size: 12px;
+}
+slot[name="sidenav"]::slotted(*){
+	display: flex;
+	flex-direction: column;
+	position: fixed;
+	left: 0;
+	top: 5rem;
+	/* height: calc(100vh - 5rem); */
+	width: 20rem;
+	background-color:#cf0;
+
+}
+</style>
+<header>
+<a href="/"><div class="css-s5xdrg"><svg icon aria-hidden="true" role="img" viewBox="0 0 30 26" fill="#FA0F00" aria-label="Adobe" class="css-4277n7"><polygon points="19,0 30,0 30,26"></polygon><polygon points="11.1,0 0,0 0,26"></polygon><polygon points="15,9.6 22.1,26 17.5,26 15.4,20.8 10.2,20.8"></polygon></svg><strong class="spectrum-Heading spectrum-Heading--sizeXXS css-129j81v"><span class="css-ppngqo">Adobe&nbsp;</span>Developer</strong></div></a>
+<a href="/apis/" role="tab" aria-selected="false"><span class="spectrum-Tabs-itemLabel">Products</span></a>
+<slot name=header></slot>
+<input type=search>
+<button>Console</button>
+<button>Sign in</button>
+</header>
+<section sidenav>
+	<slot name="sidenav"></slot>
+</section>
+<main>
+<slot>...</slot>
+</main>
+<footer>
+<section>
+
+<div><h3 class="spectrum-Heading spectrum-Heading--sizeXS">APIs and Services</h3><ul class="spectrum-Body spectrum-Body--sizeS"><li><a href="/creative-cloud" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Creative Cloud</a></li><li><a href="/experience-platform-apis" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Experience Platform</a></li><li><a href="/document-services/homepage" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Document Cloud</a></li><li><a href="/apis" class="spectrum-Link spectrum-Link--quiet"><strong>View all</strong></a></li></ul></div>
+<div class="css-qnhoxw"><ul class="spectrum-Body spectrum-Body--sizeS"><li><a href="/experience-cloud/cloud-manager" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Cloud Manager</a></li><li><a href="/analytics-apis/docs/2.0" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Analytics</a></li><li><a href="/app-builder" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">App Builder</a></li></ul></div>
+</div>
+
+
+<div class="css-1d3oxfz">
+<h3 class="spectrum-Heading spectrum-Heading--sizeXS">Community</h3><ul class="spectrum-Body spectrum-Body--sizeS"><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://medium.com/adobetech" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Tech Blog</a></li><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/adobe" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe on GitHub</a></li><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://youtube.com/channel/UCDtYqOjS9Eq9gacLcbMwhhQ" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Developer on YouTube</a></li><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://twitter.com/adobedevs" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Developer on Twitter</a></li><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://adobe.com/communities/index.html" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Community Forums</a></li></ul>
+<div class="css-bfgfhu"><hr role="separator" aria-orientation="vertical" class="spectrum-Divider spectrum-Divider--sizeM spectrum-Divider--vertical" height="100%"></div>
+</div>
+
+<div class="css-1k624f9">
+<h3 class="spectrum-Heading spectrum-Heading--sizeXS">Support</h3><ul class="spectrum-Body spectrum-Body--sizeS"><li><a href="/developer-support" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Developer support</a></li><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://helpx.adobe.com/contact/enterprise-support.html" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Product support</a></li></ul>
+</div>
+
+<div class="css-3ldaur"><h3 class="spectrum-Heading spectrum-Heading--sizeXS">Adobe Developer</h3><ul class="spectrum-Body spectrum-Body--sizeS"><li><a href="/developer-console" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Adobe Developer Console</a></li><li><a href="/open" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Open source at Adobe</a></li><li><a href="/console/downloads" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Download SDKs</a></li><li><a href="/developer-console/docs/guides/authentication" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Authentication</a></li><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://adobe.com/careers.html" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Careers</a></li></ul></div>
+
+</section>
+<hr>
+<div class="css-1ud0h0j">
+<div><ul class="spectrum-Body spectrum-Body--sizeXS css-3indta"><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://adobe.com/privacy.html" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Privacy</a></li><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://adobe.com/legal/terms.html" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Terms of Use</a></li><li><a id="openPrivacy" href="#" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary"></a></li><li><a target="_blank" rel="noopener noreferrer nofollow" href="https://adobe.com/privacy/ca-rights.html" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">Do not sell my personal information</a></li><li class="css-112tzfn"><svg icon viewBox="0 0 71.38 75.48" class="css-1ez8dht"><path d="M71.43,46.62c6.63-3.61,7.81-8.22.11-12.78L17.44,4.31c-6.57-3.71-12-.64-12,6.84V69.36c0,9.58,5,10.51,11.63,6.91l6.18-3.44c1-.67,3.38-2.69,2.72-5.42-.61-2.54-2.8-3.33-5.31-2.64-3.68,2-6,0-6-4.16V19.16c0-4.16,3-5.87,6.63-3.8L58.63,36.68c3.65,2.07,3.62,5.39-.06,7.39l-23.06,12V42a3.95,3.95,0,1,0-7.89,0V62c0,2.18,1.9,3.74,3.95,4.47a5.36,5.36,0,0,0,3.72-.23Z" transform="translate(-5.49 -2.73)"></path><path d="M35.9,31.33a4.14,4.14,0,1,1-4.14-4.14,4.14,4.14,0,0,1,4.14,4.14" transform="translate(-5.49 -2.73)"></path></svg><a target="_blank" rel="noopener noreferrer nofollow" href="https://adobe.com/privacy/opt-out.html#interest-based-ads" class="spectrum-Link spectrum-Link--quiet spectrum-Link--secondary">AdChoices</a></li></ul></div>
+<div><span class="spectrum-Body spectrum-Body--sizeXS css-1a02qau">Copyright © 2022 Adobe. All rights reserved.</span></div>
+</div>
+</footer>
+		`;
 	}
 	connectedCallback(){
 		this.render();
 	}
+
+	get docs(){
+		return this._docs;
+	}
+	set docs(docs=null){
+		this._docs = docs;
+		console.warn(`TODO render nav and other static items`);
+	}
+
+	renderNav({ siteMetadata, pathPrefix }){
+console.warn(`TODO fix nav for / and Producs (first 2 items), render this in itself?`);
+		const {page=''} = this;
+		const subPage = siteMetadata.subPages.find(({title, path, header, pages}, i)=>page.startsWith(path))
+		console.warn({subPage, page, f: siteMetadata.subPages});
+		return `
+		<nav slot=header>${ siteMetadata.pages.map(({title, path}, i)=>{
+			const link = `<a href="${ path }">${ title }</a>`;
+			if(i===0){
+				return `${ link } <select>${ siteMetadata.versions.map(({title, path, selected})=>{
+					return `<option value=${ path } ${ selected ? 'selected':'' }>${ title }</option>`;
+				}).join(' ') }</select>`;
+			}
+			return link;
+		}).join(' ') }</nav>
+		<nav slot=sidenav>
+TODO just render the entire sidenav then expand/adjust based on the active page--no need to keep rendering this little bit of content in it, do display (and display:none) for the sections and expand the appropriate parts for each while navigating
+		TODO sidenav based on this.page "${ this.page }" and siteMetadata.subPages ${ subPage?.pages?.map(({title, path, pages})=>{ return `<a href="${ path }">${ title } ${ pages?.length }</a>`; }).join(' ')  }
+		</nav>
+		`;
+	}
+
 	render(html=this.localName){
 		cancelAnimationFrame(this._render);
 		this._render = requestAnimationFrame(()=>{
-			this.innerHTML = html;
+			const { docs } = this;
+			const nav = docs ? this.renderNav(docs) : '';
+			this.innerHTML = `${ nav } ${html}`;
 		});
 	}
 	content(response={}){
 
-		const {text='', path, page, markdown} = response;
+		const {text='', path, page, markdown, docs} = response;
 		let html, error, processed;
 		try{
 			processed = this.preprocess(text, path)
@@ -32,6 +144,7 @@ const res = {path, page, html, processed, text};
 this.path = path;
 this.page = page;
 this.res = res;
+this.docs = docs;
 console.log(this.list.push(res), res);
 		}catch(err){
 				error = err;
