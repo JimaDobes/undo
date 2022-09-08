@@ -34,31 +34,34 @@ header svg{
 footer svg{
 	--icon-size: 12px;
 }
-slot[name="sidenav"]::slotted(*){
+main{
+	display:flex;
+}
+section[sidenav]{
 	display: flex;
 	flex-direction: column;
-	position: fixed;
-	left: 0;
-	top: 5rem;
-	/* height: calc(100vh - 5rem); */
 	width: 20rem;
-	background-color:#cf0;
+	background-color:rgba(255,255,255,0.5);
+}
+section[content]{
 
 }
 </style>
 <header>
 <a href="/"><div class="css-s5xdrg"><svg icon aria-hidden="true" role="img" viewBox="0 0 30 26" fill="#FA0F00" aria-label="Adobe" class="css-4277n7"><polygon points="19,0 30,0 30,26"></polygon><polygon points="11.1,0 0,0 0,26"></polygon><polygon points="15,9.6 22.1,26 17.5,26 15.4,20.8 10.2,20.8"></polygon></svg><strong class="spectrum-Heading spectrum-Heading--sizeXXS css-129j81v"><span class="css-ppngqo">Adobe&nbsp;</span>Developer</strong></div></a>
 <a href="/apis/" role="tab" aria-selected="false"><span class="spectrum-Tabs-itemLabel">Products</span></a>
-<slot name=header></slot>
+<nav sitenav></nav>
 <input type=search>
 <button>Console</button>
 <button>Sign in</button>
 </header>
-<section sidenav>
-	<slot name="sidenav"></slot>
-</section>
 <main>
+<section sidenav>
+...
+</section>
+<section content>
 <slot>...</slot>
+</section>
 </main>
 <footer>
 <section>
@@ -97,39 +100,50 @@ slot[name="sidenav"]::slotted(*){
 	}
 	set docs(docs=null){
 		this._docs = docs;
-		console.warn(`TODO render nav and other static items`);
+		this.renderNav(docs);
 	}
 
-	renderNav({ siteMetadata, pathPrefix }){
-console.warn(`TODO fix nav for / and Producs (first 2 items), render this in itself?`);
-		const {page=''} = this;
-		const subPage = siteMetadata.subPages.find(({title, path, header, pages}, i)=>page.startsWith(path))
-		console.warn({subPage, page, f: siteMetadata.subPages});
-		return `
-		<nav slot=header>${ siteMetadata.pages.map(({title, path}, i)=>{
-			const link = `<a href="${ path }">${ title }</a>`;
-			if(i===0){
-				return `${ link } <select>${ siteMetadata.versions.map(({title, path, selected})=>{
-					return `<option value=${ path } ${ selected ? 'selected':'' }>${ title }</option>`;
-				}).join(' ') }</select>`;
-			}
-			return link;
-		}).join(' ') }</nav>
-		<nav slot=sidenav>
-TODO just render the entire sidenav then expand/adjust based on the active page--no need to keep rendering this little bit of content in it, do display (and display:none) for the sections and expand the appropriate parts for each while navigating
-		TODO sidenav based on this.page "${ this.page }" and siteMetadata.subPages ${ subPage?.pages?.map(({title, path, pages})=>{ return `<a href="${ path }">${ title } ${ pages?.length }</a>`; }).join(' ')  }
-		</nav>
-		`;
+	renderPagesNav({header, title, path, pages=[]}, i){
+		return `<nav path=${ path }><a href="${ this.pathPrefix }${ path }" ${ header ? 'header':'' }>${ title }</a><ul>${ pages.map(this.renderPagesNav, this).join(' ') }</ul></nav>`;
+	}
+
+	renderNav(docs){
+		cancelAnimationFrame(this._renderNav);
+		if(!docs){
+			this._renderNav = requestAnimationFrame(()=>{
+				this.shadowRoot.querySelector('header nav[sitenav]').innerHTML = '';
+				this.shadowRoot.querySelector('section[sidenav]').innerHTML = '';
+			});
+			return;
+		}
+		let { siteMetadata, pathPrefix } = docs;
+		pathPrefix = pathPrefix.replace(/\/$/,'');
+		this.pathPrefix = pathPrefix;
+
+		this._renderNav = requestAnimationFrame(()=>{
+console.warn(`TODO fix routing/nav for / and Producs (first 2 items), render this in itself?`);
+			this.shadowRoot.querySelector('header nav[sitenav]').innerHTML = siteMetadata.pages.map(({title, path}, i)=>{
+				const link = `<a href="${ pathPrefix }${ path }">${ title }</a>`;
+				if(i===0){
+					return `${ link } <select>${ siteMetadata.versions.map(({title, path, selected})=>{
+						return `<option value=${ path } ${ selected ? 'selected':'' }>${ title }</option>`;
+					}).join(' ') }</select>`;
+				}
+				return link;
+			}).join(' ');
+
+			this.shadowRoot.querySelector('section[sidenav]').innerHTML = siteMetadata.subPages.map(this.renderPagesNav, this).join(' ');
+
+		});
 	}
 
 	render(html=this.localName){
 		cancelAnimationFrame(this._render);
 		this._render = requestAnimationFrame(()=>{
-			const { docs } = this;
-			const nav = docs ? this.renderNav(docs) : '';
-			this.innerHTML = `${ nav } ${html}`;
+			this.innerHTML = html;
 		});
 	}
+
 	content(response={}){
 
 		const {text='', path, page, markdown, docs} = response;

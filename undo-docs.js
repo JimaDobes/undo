@@ -180,6 +180,7 @@ slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
 		cancelAnimationFrame(this._update_docs);
 		this._update_docs = requestAnimationFrame(()=>{
 			const view = this.querySelector(this._viewSelector || 'un-known');
+			if(view) view.docs = docs;
 			this.page = this.docs?.siteMetadata?.pages[0].path ?? '';
 			this.setAttribute('path-prefix', this.pathPrefix.replace(/\/$/,''));
 			this.shadowRoot.querySelector('textarea').value = JSON.stringify(docs, false, '\t');
@@ -232,6 +233,7 @@ slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
 			this._viewSelector = localName;
 			const view = this.ownerDocument.createElement(localName);
 			this.querySelectorAll(oldview || localName).forEach(node=>node.remove());
+			view.docs = this.docs;
 			this.appendChild( view );
 		})
 		.catch(res=>{
@@ -249,7 +251,8 @@ slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
 		if (defaultPrevented || button !== 0 ||
 			metaKey || ctrlKey || shiftKey) return;
 
-		const anchor = target.closest('a');
+//		const anchor = target.closest('a');
+		const anchor = event.composedPath().find(node=>node.matches?.('a'));
 		if(!anchor || anchor.target || anchor.hasAttribute('download') || anchor.getAttribute('rel') === 'external' || anchor.origin !== location.origin) return;
 
 		// if exists will be modified
