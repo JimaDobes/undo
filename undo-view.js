@@ -141,6 +141,8 @@ console.warn(`TODO fix routing/nav for / and Producs (first 2 items), render thi
 		cancelAnimationFrame(this._render);
 		this._render = requestAnimationFrame(()=>{
 			this.innerHTML = html;
+			// reset view here?
+			this.scrollTop = 0;
 		});
 	}
 
@@ -186,13 +188,13 @@ this allows capturing and substituting again back to the desired content without
 $1
 </template tag=undo-meta>`)
 			// import statements are like server-side includes and just inject content in places from a source
-			.replace(/\bimport\s+([a-z0-9_-]+)\s+from\s+['"]([^'"]+)['"]/ig, function _unimport(all, $1, $2, i, str){
+			.replace(/\bimport\s+([A-Za-z0-9_-]+)\s+from\s+['"]([^'"]+)['"];?/ig, function _unimport(all, $1, $2, i, str){
 				unimport[ $1 ] = $2;
 				return '';
 			})
 			.replace(/<([A-Za-z0-9-]+)([^>]*?)\/>/g, function _importToSrc(all, $1, $2, str){
 				const src = unimport[ $1 ];
-				return `<template tag=undo-${ $1 }${ $2 }${ src ? ` src=${ src }`:'' }></template tag=undo-${ $1 }${ $2 }>`;
+				return `<template tag=undo-${ $1 }${ $2 }${ src ? ` src="${ src }"`:'' }></template tag=undo-${ $1 }${ $2 }>`;
 			})
 			// fix image paths relative to this document
 			.replace(/(!\[.*?\]\()[\.\/]*/g, `$1${ basepath }/`)
