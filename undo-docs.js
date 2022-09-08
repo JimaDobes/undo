@@ -129,6 +129,7 @@ slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
 		})
 		.finally(()=>{
 			this.removeAttribute('loading-page');
+			this.querySelector(this._viewSelector).scrollTop = 0;
 		})
 		;
 	}
