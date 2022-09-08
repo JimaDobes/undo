@@ -180,10 +180,18 @@ slot[name="source"]::slotted(*){position:absolute;bottom:0;right:1em;}
 		cancelAnimationFrame(this._update_docs);
 		this._update_docs = requestAnimationFrame(()=>{
 			const view = this.querySelector(this._viewSelector || 'un-known');
+			/* when docs load they need to compare the location with the metadata to determine what page to use: the default or what's in the url already */
+			let page;
+			if(location.pathname.startsWith(this.pathPrefix)){
+				page = location.pathname.replace(this.pathPrefix,'/');
+			}else{
+				page = this.docs?.siteMetadata?.pages[0].path ?? '';
+			}
 			if(view) view.docs = docs;
-			this.page = this.docs?.siteMetadata?.pages[0].path ?? '';
 			this.setAttribute('path-prefix', this.pathPrefix.replace(/\/$/,''));
 			this.shadowRoot.querySelector('textarea').value = JSON.stringify(docs, false, '\t');
+
+			this.page = page;
 		});
 	}
 
